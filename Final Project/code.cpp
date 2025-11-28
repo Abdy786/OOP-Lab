@@ -1,4 +1,5 @@
 #include <iostream>
+#include <fstream>
 #include <string>
 using namespace std;
 
@@ -42,7 +43,6 @@ public:
 
     int getID() const { return id; }
     double getBalance() const { return balance; }
-
     void remove() { id = -1; name.clear(); type.clear(); balance = 0; }
 };
 
@@ -78,7 +78,6 @@ public:
 
 Account accounts[MAX_ACCOUNTS];
 Transaction logs[MAX_TRANSACTIONS];
-
 int accCount = 0, logCount = 0;
 
 int findAcc(int id) {
@@ -98,29 +97,30 @@ public:
 
     void createAccount() {
         int id; string name, type; double bal;
-
         cout << "Enter new Account ID: ";
         cin >> id;
         if (findAcc(id) != -1) { cout << "ID already exists.\n"; return; }
-
         cin.ignore();
         cout << "Holder Name: "; getline(cin, name);
         cout << "Account Type: "; getline(cin, type);
         cout << "Initial Balance: "; cin >> bal;
-
         accounts[accCount++].create(id, name, type, bal);
         cout << "Account Created!\n";
     }
 
     void viewAccount() {
-        int id; cout << "Enter Account ID: "; cin >> id;
+        int id; 
+        cout << "Enter Account ID: "; 
+        cin >> id;
         int idx = findAcc(id);
         if (idx != -1) accounts[idx].show();
         else cout << "Not found.\n";
     }
 
     void deleteAccount() {
-        int id; cout << "Enter Account ID: "; cin >> id;
+        int id; 
+        cout << "Enter Account ID: "; 
+        cin >> id;
         int idx = findAcc(id);
         if (idx != -1) {
             accounts[idx].remove();
@@ -155,7 +155,12 @@ public:
 class Customer : public User {
     int myID;
 public:
-    Customer(string u, string p, int accID) : User(u,p), myID(accID) {}
+    Customer(string u="", string p="", int accID=0) : User(u,p), myID(accID) {}
+
+    void setCredentials(string u, string p) {
+        username = u;
+        password = p;
+    }
 
     void myAccount() {
         int idx = findAcc(myID);
@@ -206,25 +211,76 @@ public:
 };
 
 Admin admin1;
-Customer customer1("user", "pass", 101);
+Customer customer1;
+bool isRegistered = false;
+
+void saveToFile(string u, string p) {
+    ofstream file("customer.txt");
+    file << u << endl << p;
+    file.close();
+}
+
+bool loadFromFile(string &u, string &p) {
+    ifstream file("customer.txt");
+    if (!file.is_open()) return false;
+    getline(file, u);
+    getline(file, p);
+    file.close();
+    return true;
+}
 
 int main() {
     int ch;
-
     accounts[accCount++].create(101, "Test User", "Savings", 500);
 
+    string savedUser, savedPass;
+    if (loadFromFile(savedUser, savedPass)) {
+        customer1.setCredentials(savedUser, savedPass);
+        customer1 = Customer(savedUser, savedPass, 101);
+        isRegistered = true;
+    }
+
     do {
-        cout << "\n=== BANK SYSTEM ===\n1. Login\n0. Exit\nChoice: ";
+        cout << "\n=== BANK SYSTEM ===\n";
+        cout << "1. Register (Customer)\n";
+        cout << "2. Login\n";
+        cout << "0. Exit\nChoice: ";
         cin >> ch;
 
         if (ch == 1) {
-            string u,p;
-            cout << "Username: ";  cin >> u;
-            cout << "Password: ";  cin >> p;
+            if (isRegistered) {
+                cout << "Customer already registered.\n";
+            } else {
+                string u, p;
+                cout << "Create Username: ";
+                cin >> u;
+                cout << "Create Password: ";
+                cin >> p;
 
-            if (admin1.login(u,p)) { cout << "\nAdmin logged in.\n"; admin1.menu(); }
-            else if (customer1.login(u,p)) { cout << "\nCustomer logged in.\n"; customer1.menu(); }
-            else cout << "Invalid.\n";
+                customer1.setCredentials(u, p);
+                customer1 = Customer(u, p, 101);
+                saveToFile(u, p);
+                isRegistered = true;
+                cout << "Registration successful!\n";
+            }
+        }
+
+        else if (ch == 2) {
+            string u,p;
+            cout << "Username: ";  
+            cin >> u;
+            cout << "Password: ";  
+            cin >> p;
+
+            if (admin1.login(u,p)) { 
+                cout << "\nAdmin logged in.\n"; 
+                admin1.menu(); 
+            }
+            else if (isRegistered && customer1.login(u,p)) { 
+                cout << "\nCustomer logged in.\n"; 
+                customer1.menu(); 
+            }
+            else cout << "Invalid login.\n";
         }
 
     } while (ch != 0);
